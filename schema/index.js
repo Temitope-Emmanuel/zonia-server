@@ -6,10 +6,12 @@ const jwt = require("jsonwebtoken")
 
 const {
     GraphQLObjectType,
+    GraphQLInt,
     GraphQLString,
     GraphQLSchema,
     GraphQLNonNull,
     GraphQLID,
+    GraphQLList
 } = graphql
 
 
@@ -18,29 +20,35 @@ const {
 const UserType = new GraphQLObjectType({
     name:"User",
     fields:() =>({
-        id:{type:GraphQLID},
+        profileImg:{type:GraphQLString},
         username:{type:GraphQLString},
         email:{type:GraphQLString},
-        profileImg:{type:GraphQLString},
         token:{type:GraphQLString},
         products:{
-            type:ProductType,
+            type:new GraphQLList(ProductType),
             async resolve(parents,args){
-                const foundProduct = db.products.find({owner:parents.id})
+                const foundProduct = db.Product.find({owner:parents.id})
                 return foundProduct
             }
-        }
+        },
+        id:{type:GraphQLID},
+        createdAt:{type:GraphQLString},
+        updatedAt:{type:GraphQLString}
     })
 })
 
 const ProductType = new GraphQLObjectType({
     name:"Product",
     fields:() => ({
+        price:{type:GraphQLInt},
         name:{type:GraphQLString},
+        _id:{type:GraphQLID},
+        createdAt:{type:GraphQLString},
+        updatedAt:{type:GraphQLString},
         owner:{
             type:UserType,
             async resolve(parents,args){
-                const foundUser = db.User.findById(parents.id)
+                const foundUser = db.User.findById(parents.owner)
                 return foundUser
             }
         }
@@ -56,6 +64,32 @@ const RootQuery = new GraphQLObjectType({
             args:{id:{type:GraphQLID}},
             async resolve(_,{id}){
                 return await db.User.findById(id)
+            }
+        },
+        getAllUser:{
+            type:new GraphQLList(UserType),
+            async resolve(_,args){
+                return await db.User.find({})
+            }
+        },
+        getProduct:{
+            type:ProductType,
+            args:{
+                name:{type:GraphQLString},
+                id:{type:GraphQLString}
+            },
+            async resolve(parents,{name,id}){
+                if(id){
+                    return await db.Product.findById(id)
+                }else if(name){
+                    return await db.Product.findOne({name:name})
+                }
+            }
+        },
+        getAllProduct:{
+            type:new GraphQLList(ProductType),
+            async resolve(_,args){
+                return await db.Product.find()
             }
         }
     }
@@ -113,6 +147,43 @@ const Mutation = new GraphQLObjectType({
                     // Add a way to send error
                     throw new Error({message:"Credentials Validation Failed"})
                 }
+            }
+        },
+        addProduct:{
+            type:ProductType,
+            args:{
+                owner:{type:new GraphQLNonNull(GraphQLString)},
+                name:{type:new GraphQLNonNull(GraphQLString)},
+                price:{type:new GraphQLNonNull(GraphQLInt)}
+            },
+            async resolve(parents,{name,owner,price}){
+                const id = new mongoose.Types.ObjectId()
+                const newProduct = await db.Product.create({
+                    _id:id,
+                    owner,
+                    name,
+                    price
+                })
+                await newProduct.save()
+                return newProduct
+            }
+        },
+        removeProduct:{
+            type:ProductType,
+            args:{
+                id:{type:GraphQLID},
+                name:{type:GraphQLString}
+            },
+            async resolve(parents,{id,name}){
+                let foundProduct;
+                if(id){
+                    foundProduct = await db.Product.findById(id)
+                    await foundProduct.remove()
+                }else if(name){
+                    foundProduct = await db.Product.findOne({name:name})
+                    await foundProduct.remove()    
+                }
+                return foundProduct
             }
         }
     }

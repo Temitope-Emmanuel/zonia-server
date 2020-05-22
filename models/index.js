@@ -3,10 +3,9 @@ mongoose.set("debug",true)
 mongoose.Promise = global.Promise
 
 mongoose.connect("mongodb://localhost/zoniav2",{
-    keepAlive:true,
-    useNewUrlParser:true,
     useUnifiedTopology:true
 })
 
 module.exports.User = require("./user")
 module.exports.Product = require("./product")
+module.exports.Review = require("./Review")
