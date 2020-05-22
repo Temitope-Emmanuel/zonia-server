@@ -64,7 +64,7 @@ const RootQuery = new GraphQLObjectType({
 const Mutation = new GraphQLObjectType({
     name:"Mutation",
     fields:{
-        addUser:{
+        signup:{
             type:UserType,
             args:{
                 username:{type:new GraphQLNonNull(GraphQLString)},
@@ -73,14 +73,14 @@ const Mutation = new GraphQLObjectType({
                 profileImg:{type: GraphQLString}
             },
             async resolve(parents,{username,email,password,profileImg}){
+                const id = new mongoose.Types.ObjectId()
                 const newUser = await db.User.create({
-                    _id:new mongoose.Types.ObjectId(),
+                    _id:id,
                     username,
                     email,
                     password,
                     profileImg
                 })
-                const {id} = await newUser
                 await newUser.save()
 
                 let token = jwt.sign({
@@ -90,6 +90,31 @@ const Mutation = new GraphQLObjectType({
                 return payload
             }
         },
+        login:{
+            type:UserType,
+            args:{
+                email:{type:GraphQLString},
+                password:{type:GraphQLString}
+            },
+            async resolve(parents,{email,password}){
+                const foundUser = await db.User.findOne({
+                    email:email
+                })
+                console.log(foundUser)
+                let {_id,username,profileImg} = foundUser
+                let isMatch = await foundUser.comparePassword(password)
+                if(isMatch){
+                    let token = jwt.sign({
+                        _id,username,profileImg
+                    },process.env.SECRET_KEY,{expiresIn:"2d"})
+                    return {id:_id,username,profileImg,token}
+
+                }else{
+                    // Add a way to send error
+                    throw new Error({message:"Credentials Validation Failed"})
+                }
+            }
+        }
     }
 })
 
