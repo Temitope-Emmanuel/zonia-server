@@ -15,6 +15,8 @@ const reviewSchema = new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:"Product"
     }
+},{
+    timestamps:true
 })
 
 reviewSchema.pre("remove",async function(next){

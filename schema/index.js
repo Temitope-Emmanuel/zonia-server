@@ -27,8 +27,13 @@ const UserType = new GraphQLObjectType({
         products:{
             type:new GraphQLList(ProductType),
             async resolve(parents,args){
-                const foundProduct = db.Product.find({owner:parents.id})
-                return foundProduct
+                return db.Product.find({owner:parents.id})
+            }
+        },
+        reviews:{
+            type:new GraphQLList(ReviewType),
+            async resolve (parents,args){
+                return await db.Review.find({author:parents.id})
             }
         },
         id:{type:GraphQLID},
@@ -51,7 +56,34 @@ const ProductType = new GraphQLObjectType({
                 const foundUser = db.User.findById(parents.owner)
                 return foundUser
             }
+        },
+        review:{
+            type:new GraphQLList(ProductType),
+            async resolve(parents,args){
+                return await db.Review.find({product:parents._id})
+            }
         }
+    })
+})
+const ReviewType = new GraphQLObjectType({
+    name:"Review",
+    fields:() => ({
+        _id:{type:GraphQLID},
+        content:{type:GraphQLString},
+        author:{
+            type:UserType,
+            async resolve(parents,args){
+                return await db.User.findById(parents.author)
+            }
+        },
+        product:{
+            type:ProductType,
+            async resolve(parents,args){
+                return await db.Product.findById(parents.product)
+            }
+        },
+        createdAt:{type:GraphQLString},
+        updatedAt:{type:GraphQLString},
     })
 })
 
@@ -184,6 +216,28 @@ const Mutation = new GraphQLObjectType({
                     await foundProduct.remove()    
                 }
                 return foundProduct
+            }
+        },
+        addReview:{
+            type:ReviewType,
+            args:{
+                content:{type:new GraphQLNonNull(GraphQLString)},
+                author:{type:new GraphQLNonNull(GraphQLID)},
+                product:{type:new GraphQLNonNull(GraphQLID)}
+            },
+            async resolve(parents,{content,author,product}){
+                const _id = new mongoose.Types.ObjectId()
+                const newReview = await db.Review.create({
+                    content,author,product,_id
+             }) 
+             return newReview  
+            }
+        },
+        deleteReview:{
+            type:ReviewType,
+            args:{id:{GraphQLID}},
+            async resolve(parents,{id}){
+                return await db.Review.findByIdAndDelete(id)
             }
         }
     }
