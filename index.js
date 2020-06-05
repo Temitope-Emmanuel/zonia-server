@@ -2,13 +2,20 @@ const express = require("express")
 const app = express()
 const graphqlHTTP = require("express-graphql")
 const schema = require("./schema/")
+const {ensureUser,verifyToken} = require("./middleware/auth")
 
 const PORT = process.env.PORT || 3000
 
-app.use("/graphql",graphqlHTTP({
+app.use(verifyToken)
+app.use(ensureUser)
+
+app.use("/graphql",graphqlHTTP(req => ({
     schema,
-    graphiql:true
-}))
+    graphiql:true,
+    context:{
+        user:req.user
+    }
+})))
 
 app.get('/',(req,res) => (
     res.send("Welcome back Warrior")
